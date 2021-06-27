@@ -1,0 +1,9 @@
+---
+- hosts: all
+  become: true
+  collections:
+    - blake.consul
+  tasks:
+    - name: Import transparent proxy role
+      import_role:
+        name: transparent_proxy

@@ -1,0 +1,21 @@
+---
+namespace: blake
+name: consul
+description: Install and configure supporting services for Consul service mesh
+version: 0.1.0
+readme: README.md
+license_file: LICENSE
+authors:
+- Blake Covarrubias <blake@covarrubi.as>
+
+tags:
+  - consul
+  - servicemesh
+
+dependencies:
+  community.general: "*"
+
+repository: https://github.com/blake/ansible-collection-consul
+homepage: https://github.com/blake/ansible-collection-consul
+documentation: https://github.com/blake/ansible-collection-consul/blob/main/README.md
+issues: https://github.com/blake/ansible-collection-consul/issues

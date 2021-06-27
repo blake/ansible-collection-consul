@@ -1,0 +1,126 @@
+---
+- name: Resolve platform specific vars
+  ansible.builtin.include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+        - "{{ ansible_distribution }}-{{ ansible_distribution_release }}.yaml"
+        - "{{ ansible_distribution }}.yaml"
+        - "{{ ansible_os_family }}.yaml"
+      skip: true
+      paths:
+        - "{{ role_path }}/vars"
+
+- name: Configure package repos on Debian
+  block:
+    - name: Add package repo GPG keys
+      ansible.builtin.apt_key:
+        url: "{{ item }}"
+        state: present
+      loop:
+        - https://apt.releases.hashicorp.com/gpg
+        - https://getenvoy.io/gpg
+
+    - name: Add external package repos
+      ansible.builtin.apt_repository:
+        repo: "{{ item }}"
+        state: present
+      loop:
+        - "deb [arch=amd64] https://apt.releases.hashicorp.com {{ ansible_lsb.codename }} main"
+        - "deb [arch=amd64] https://dl.bintray.com/tetrate/getenvoy-deb {{ ansible_lsb.codename }} stable"
+  when: ansible_os_family == 'Debian'
+
+- name: Configure package repos on Red Hat
+  block:
+    - name: Add external package repos
+      ansible.builtin.yum_repository:
+        name: "{{ item.name }}"
+        state: present
+        baseurl: "{{ item.baseurl }}"
+        description: "{{ item.desc }}"
+        gpgcheck: yes
+        gpgkey: "{{ item.gpgkey }}"
+        keepalive: true
+        sslcacert: "{{ item.sslcacert | default(omit) }}"
+        metadata_expire: "{{ item.metadata_expire | default(omit) }}"
+      loop:
+        - name: hashicorp
+          baseurl: https://rpm.releases.hashicorp.com/RHEL/$releasever/$basearch/stable
+          desc: HashiCorp Stable - $basearch
+          gpgkey: https://rpm.releases.hashicorp.com/gpg
+        - name: tetrate-getenvoy-stable
+          baseurl: https://rpm.dl.getenvoy.io/public/rpm/el/8/$basearch
+          desc: Tetrate GetEnvoy - Stable
+          gpgkey: https://rpm.dl.getenvoy.io/public/gpg.CF716AF503183491.key
+          sslcacert: /etc/pki/tls/certs/ca-bundle.crt
+          metadata_expire: 300
+  when: ansible_os_family == 'RedHat'
+
+- name: Install required packages
+  ansible.builtin.package:
+    name: "{{ item }}"
+  loop:
+    - jq
+    - cloud-init
+    - "{{ consul_package_version }}"
+    - "{{ getenvoy_package_version }}"
+
+- name: Enable Consul service
+  ansible.builtin.systemd:
+    name: consul
+    enabled: yes
+
+- name: Install Envoy systemd unit file
+  ansible.builtin.copy:
+    src: systemd-envoy.conf
+    dest: /etc/systemd/system/envoy@.service
+    # 0644
+    mode: u=rw,go=r
+  notify: reload systemd
+
+- name: Install consul-sidecar-init systemd unit file
+  ansible.builtin.copy:
+    src: systemd-consul-sidecar-init.conf
+    dest: /etc/systemd/system/consul-sidecar-init.service
+    # 0644
+    mode: u=rw,go=r
+  notify: reload systemd
+
+- name: Create /srv/consul
+  file:
+    state: directory
+    path: /srv/consul
+
+- name: Copy Consul configurations
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "{{ item.mode }}"
+    owner: "{{ item.owner | default(omit) }}"
+    group: "{{ item.group | default(omit) }}"
+  loop:
+    - src: agent-common.hcl
+      dest: /etc/consul.d/agent-common.hcl
+      # 0644
+      mode: u=rw,go=r
+      owner: consul
+      group: consul
+    - src: consul-redirect-traffic.sh
+      dest: /usr/local/bin/consul-redirect-traffic
+      # 0750
+      mode: u=rwx,g=rw,o=
+    - src: generate-sidecar-configs.py
+      dest: /srv/consul/generate-sidecar-configs.py
+      # 0750
+      mode: u=rwx,g=rw,o=
+    - src: consul-cleanup-iptables.sh
+      dest: /usr/local/bin/consul-cleanup-iptables
+      # 0750
+      mode: u=rwx,g=rw,o=
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable consul-sidecar-init.service
+  systemd:
+    name: consul-sidecar-init
+    enabled: yes

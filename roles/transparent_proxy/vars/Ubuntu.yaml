@@ -1,0 +1,3 @@
+---
+consul_package_version: consul=1.10.0
+getenvoy_package_version: getenvoy-envoy=1.18.3.p0.g98c1c9e-1p77.gb76c773
