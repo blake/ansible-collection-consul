@@ -20,8 +20,22 @@ class ProxyConfig(TypedDict, total=False):
     upstreams: List[UpstreamDefinition]
 
 
+class TaggedAddress(TypedDict):
+    address: str
+    port: int
+
+
+class TaggedAddresses(TypedDict):
+    virtual: TaggedAddress
+
+
+class SidecarServiceDefinition(TypedDict, total=False):
+    proxy: ProxyConfig
+    tagged_addresses: TaggedAddresses
+
+
 class ConnectDefinition(TypedDict):
-    sidecar_service: Dict[str, ProxyConfig]
+    sidecar_service: SidecarServiceDefinition
 
 
 class ServiceDefinition(TypedDict, total=False):
@@ -120,6 +134,7 @@ class ServiceConfigParameters:
     def parse_service_config(self):
         # Prefix for each Connect annotation
         annotation_prefix = "consul.hashicorp.com/"
+        alpha_annotation_prefix = f"alpha.{annotation_prefix}"
 
         connect_definition = ConnectDefinition(sidecar_service={})
         service_definition = ServiceDefinition(connect=connect_definition)
@@ -137,10 +152,23 @@ class ServiceConfigParameters:
             )
         )
 
+        # Initialize tagged virtual address variable. Used later to added
+        # tagged address if proxy.mode is 'transparent'
+        tagged_virtual_address = ""
+
         annotations = self.json_config["annotations"]  # type: dict[str, str]
         service_metadata = {}  # type: dict[str, str]
 
         for annotation, value in annotations.items():
+            # Handle alpha annotations differently
+            if annotation.startswith(alpha_annotation_prefix):
+                option = self.removeprefix(annotation, alpha_annotation_prefix)
+
+                if option == "virtual-ip":
+                    tagged_virtual_address = value
+
+                continue
+
             if not annotation.startswith(annotation_prefix):
                 continue
 
@@ -195,6 +223,17 @@ class ServiceConfigParameters:
         # definition
         if proxy_config:
             connect_definition["sidecar_service"]["proxy"] = proxy_config
+
+        # Append port to 'virtual' tagged address
+        if tagged_virtual_address and proxy_config.get("mode") == "transparent":
+            service_port = service_definition.get("port")
+            if service_port:
+                tagged_address = TaggedAddress(
+                    address=tagged_virtual_address, port=service_port
+                )
+                connect_definition["sidecar_service"][
+                    "tagged_addresses"
+                ] = TaggedAddresses(virtual=tagged_address)
 
         self.service_registration = dict(service=service_definition)
         return self.service_registration

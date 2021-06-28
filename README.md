@@ -7,7 +7,7 @@ the installation and configuration of a Consul datacenter.
 
 ## Included Content
 
-The current stable release (`0.1.0`) of the Ansible Consul collection includes
+The current stable release (`0.1.1`) of the Ansible Consul collection includes
 the following roles:
 
 |Name|Description|
@@ -26,7 +26,7 @@ Instructions on how to install Ansible can be found in the [Ansible website](htt
 
 ### Ansible Galaxy
 
-Use `ansible-galaxy collection install git+https://github.com/blake/ansible-collection-consul.git,v0.1.0`
+Use `ansible-galaxy collection install git+https://github.com/blake/ansible-collection-consul.git,v0.1.1`
 to install the latest stable release of the collection on your system.
 
 You can also include the collection in a `requirements.yml` file and install it
@@ -38,7 +38,7 @@ using the format:
 collections:
   - name: https://github.com/blake/ansible-collection-consul.git
     type: git
-    version: v0.1.0
+    version: v0.1.1
 ```
 
 ### Git

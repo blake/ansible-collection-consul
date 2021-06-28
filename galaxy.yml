@@ -2,7 +2,7 @@
 namespace: blake
 name: consul
 description: Install and configure supporting services for Consul service mesh
-version: 0.1.0
+version: 0.1.1
 readme: README.md
 license_file: LICENSE
 authors:
