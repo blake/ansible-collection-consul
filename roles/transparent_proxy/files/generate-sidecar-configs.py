@@ -155,6 +155,27 @@ class ServiceConfigParameters:
         self.json_config = self.read_json_file(json_file=config)
         self.service_config = self.parse_service_config()
 
+    def parse_proxy_config(self, proxy_config: str):
+        """
+        Parse the proxy provided on the CLI.
+        """
+
+        proxy_params = self.service_config["service"]["connect"]["sidecar_service"]["proxy"]
+
+        proxy_config_params = {}
+
+        proxy_config_vars: List[str] = self.parse_csv(proxy_config)
+        for config in proxy_config_vars:
+            key, value = config.split(sep="=")
+            proxy_config_params[key] = value
+
+        if "config" in proxy_params:
+            proxy_params["config"].update(proxy_config_params)
+        else:
+            proxy_params["config"] = proxy_config_params
+
+        return proxy_params
+
     def parse_service_config(self):
         """
         Parses the provided service configuration file and returns a dictionary
@@ -337,6 +358,9 @@ def main():
         help="Print to generated information to stdout",
     )
     parser.add_argument(
+        "--proxy-config", help="Optional configuration for the proxy. Format is 'key1=value1,key2=value2'"
+    )
+    parser.add_argument(
         "--type", choices=supported_outputs, help="The type of information to output"
     )
     args = parser.parse_args()
@@ -347,6 +371,10 @@ def main():
         )
 
     service_config = ServiceConfigParameters(config=args.filename)
+
+    # Parse optional proxy configuration if present
+    if args.proxy_config:
+        service_config.parse_proxy_config(args.proxy_config)
 
     type_func_map = {
         "connect-envoy": service_config.generate_connect_envoy_args,
