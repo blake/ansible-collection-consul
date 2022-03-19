@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 
+"""
+This script generates a Consul service registration and/or envoy configuration
+based on a set of annotations provided in a JSON configuration file.
+"""
+
 import argparse
 import json
 import os.path
@@ -8,6 +13,7 @@ from typing import Dict, List, TypedDict, Union
 
 
 class UpstreamDefinition(TypedDict, total=False):
+    """An upstream definition in a sidecar service registration."""
     datacenter: str
     destination_name: str
     destination_namespace: str
@@ -16,29 +22,39 @@ class UpstreamDefinition(TypedDict, total=False):
 
 
 class ProxyConfig(TypedDict, total=False):
+    """The configuration for this proxy, including implementation-specific overrides."""
     mode: str
     upstreams: List[UpstreamDefinition]
+    config: Dict[str, str]
 
 
 class TaggedAddress(TypedDict):
+    """A tagged address for a service."""
     address: str
     port: int
 
 
 class TaggedAddresses(TypedDict):
+    """
+    A set of tagged addresses for a service. Currently only the `virtual`
+    address type is supported.
+    """
     virtual: TaggedAddress
 
 
 class SidecarServiceDefinition(TypedDict, total=False):
+    """A sidecar service definition."""
     proxy: ProxyConfig
     tagged_addresses: TaggedAddresses
 
 
 class ConnectDefinition(TypedDict):
+    """The `connect` stanza of a sidecar service definition."""
     sidecar_service: SidecarServiceDefinition
 
 
 class ServiceDefinition(TypedDict, total=False):
+    """A Consul service definition."""
     name: str
     connect: ConnectDefinition
     meta: Dict[str, str]
@@ -47,17 +63,22 @@ class ServiceDefinition(TypedDict, total=False):
 
 
 class ServiceConfigParameters:
+    """
+    A JSON file containing one or more annotations that define the desired
+    configuration for the associated service.
+    """
 
-    # Add an argument to the list of args passed to 'consul connect redirect-traffic'
     def add_redirect_traffic_arg(self, option: str, value: str):
+        """Add an argument to the list of args passed to 'consul connect redirect-traffic'"""
         self.connect_redirect_traffic_args.append(f"-{option}={value}")
 
-    # Add an argument to the list of args passed to 'consul connect envoy'
     def add_connect_envoy_arg(self, option: str, value: str):
+        """ Add an argument to the list of args passed to 'consul connect envoy'"""
         self.connect_envoy_args.append(f"-{option}={value}")
 
     @staticmethod
     def removeprefix(text: str, prefix: str):
+        """Removes the prefix from the text if it exists, and returns the modified text."""
         if text.startswith(prefix):
             return text[len(prefix) :]
         return text
@@ -65,13 +86,15 @@ class ServiceConfigParameters:
     # Sanitize values to ensure that they don't have trailing whitespace
     @staticmethod
     def parse_csv(value: str):
+        """Parses a list of comma-separated values into a dict"""
         values = value.split(sep=",")
-        sanitized_values = map(lambda v: v.strip(), values)  # type: map[str]
+        sanitized_values: map[str] = map(lambda v: v.strip(), values)
 
         return list(sanitized_values)
 
     @staticmethod
     def parse_upstream_declaration(value: str):
+        """Attempts to parse a string into a valid upstream definition."""
         parts = value.split(sep=":")
 
         upstream_definition = UpstreamDefinition()
@@ -113,16 +136,17 @@ class ServiceConfigParameters:
         return upstream_definition
 
     def service_name(self) -> Union[str, None]:
+        """Return the service name declared in the service configuration."""
         service_definition = self.service_config["service"]
         name = service_definition.get("name")
         return name
 
     def __init__(self, config: str):
         # Extra arguments to pass to 'consul connect envoy'
-        self.connect_envoy_args = []  # type: list[str]
+        self.connect_envoy_args: List[str] = []
 
         # Extra arguments to pass to 'consul connect redirect-traffic'
-        self.connect_redirect_traffic_args = []  # type: list[str]
+        self.connect_redirect_traffic_args: List[str] = []
 
         # Extra arguments to pass to `envoy`
         self.extra_envoy_args = ""
@@ -132,6 +156,11 @@ class ServiceConfigParameters:
         self.service_config = self.parse_service_config()
 
     def parse_service_config(self):
+        """
+        Parses the provided service configuration file and returns a dictionary
+        representation of a Consul service registration for the named service.
+        """
+
         # Prefix for each Connect annotation
         annotation_prefix = "consul.hashicorp.com/"
         alpha_annotation_prefix = f"alpha.{annotation_prefix}"
@@ -156,8 +185,8 @@ class ServiceConfigParameters:
         # tagged address if proxy.mode is 'transparent'
         tagged_virtual_address = ""
 
-        annotations = self.json_config["annotations"]  # type: dict[str, str]
-        service_metadata = {}  # type: dict[str, str]
+        annotations: Dict[str, str] = self.json_config["annotations"]
+        service_metadata: Dict[str, str] = {}
 
         for annotation, value in annotations.items():
             # Handle alpha annotations differently
@@ -183,7 +212,7 @@ class ServiceConfigParameters:
                 specified_upstreams = self.parse_csv(value)
 
                 # Parsed upstream definitions
-                upstreams = []  # type: list[UpstreamDefinition]
+                upstreams: List[UpstreamDefinition] = []
 
                 for upstream in specified_upstreams:
                     upstream_declaration = self.parse_upstream_declaration(upstream)
@@ -239,21 +268,29 @@ class ServiceConfigParameters:
         return self.service_registration
 
     def generate_connect_redirect_args(self):
+        """Generate optional arguments to pass to `consul connect redirect-traffic`."""
         return " ".join(self.connect_redirect_traffic_args)
 
     def generate_connect_envoy_args(self):
+        """Generate optional arguments to pass to `consul connect envoy`."""
         return " ".join(self.connect_envoy_args)
 
     def generate_envoy_args(self):
+        """
+        Generate optional arguments to pass directly to the Envoy processes
+        spawned by `consul connect envoy`.
+        """
         return self.extra_envoy_args
 
     def generate_service_config(self):
+        """Return the service registration as a JSON string."""
         return json.dumps(self.service_config, indent=2, sort_keys=True)
 
     def read_json_file(self, json_file: str):
+        """Attempt to parse the provided file as a JSON object."""
         try:
-            with open(file=json_file) as fh:
-                service_configuration = json.load(fp=fh)
+            with open(file=json_file) as file_handle:
+                service_configuration = json.load(fp=file_handle)
         except:
             sys.exit("Unable to parse JSON registration.")
 
@@ -261,6 +298,7 @@ class ServiceConfigParameters:
 
 
 def start_systemd_process(name: str):
+    """Start the named process using systemd."""
     if sys.platform != "linux":
         return
 
@@ -281,24 +319,25 @@ def start_systemd_process(name: str):
 
 
 def main():
-    SERVICE_CONFIG_PATH = "/srv/consul/service-config.json"
-    SERVICE_REGISTRATION_FILE = "/etc/consul.d/service-registration.json"
+    """Main entry point."""
+    service_config_path = "/srv/consul/service-config.json"
+    service_registration_file = "/etc/consul.d/service-registration.json"
 
-    EXTRA_ARGUMENTS_FILENAME = "/srv/consul/extra-args.json"
+    extra_arguments_filename = "/srv/consul/extra-args.json"
 
-    SUPPORTED_OUTPUTS = ["connect-envoy", "envoy", "redirect", "service-registration"]
+    supported_outputs = ["connect-envoy", "envoy", "redirect", "service-registration"]
 
     parser = argparse.ArgumentParser(
         description="Generates a Consul service registration"
     )
-    parser.add_argument("-f", "--filename", default=SERVICE_CONFIG_PATH)
+    parser.add_argument("-f", "--filename", default=service_config_path)
     parser.add_argument(
         "--dry",
         action="store_true",
         help="Print to generated information to stdout",
     )
     parser.add_argument(
-        "--type", choices=SUPPORTED_OUTPUTS, help="The type of information to output"
+        "--type", choices=supported_outputs, help="The type of information to output"
     )
     args = parser.parse_args()
 
@@ -319,7 +358,7 @@ def main():
     # Print the requested resource to stdout if running in dry mode
     if args.dry:
         if not args.type:
-            parser.error("--dry requries --type to be specified.")
+            parser.error("--dry requires --type to be specified.")
 
         func_to_exec = type_func_map[args.type]
         result = func_to_exec()
@@ -334,15 +373,15 @@ def main():
         result = func_to_exec()
 
         if key == "service-registration":
-            with open(SERVICE_REGISTRATION_FILE, mode="w+") as fh:
-                fh.write(result)
+            with open(service_registration_file, mode="w+") as file_handle:
+                file_handle.write(result)
         else:
             extra_args[key] = result
 
     # Write output of extra arguments to disk
     if extra_args:
-        with open(EXTRA_ARGUMENTS_FILENAME, mode="w+") as fh:
-            json.dump(extra_args, fp=fh, indent=2)
+        with open(extra_arguments_filename, mode="w+") as file_handle:
+            json.dump(extra_args, fp=file_handle, indent=2)
 
     # Lastly, try to start the systemd unit for the configured service
     service_name = service_config.service_name()
