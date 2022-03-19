@@ -1,6 +1,7 @@
 ---
 - name: Check systemd version
   ansible.builtin.shell: systemd --version | awk 'NR==1 { print $2 }'
+  check_mode: false
   register: systemd_version
 
 - name: Add systemd-resolved config
