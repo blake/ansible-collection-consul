@@ -10,7 +10,6 @@ RemainAfterExit=true
 
 ExecStart=/usr/bin/env cnitool-helper add %i
 # ExecStart=/usr/bin/env cnitool-helper check envoynetwork /var/run/netns/%i
-
 ExecStop=-/usr/bin/env cnitool-helper del %i
 
 [Install]

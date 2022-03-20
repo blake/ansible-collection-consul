@@ -87,8 +87,6 @@
     # 0644
     mode: u=rw,go=r
   loop:
-    - src: systemd-consul-sidecar-init.conf
-      dest: consul-sidecar-init.service
     - src: systemd-netns@.service
       dest: systemd-netns@.service
     - src: systemd-netns-access@.service
