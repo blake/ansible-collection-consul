@@ -12,6 +12,10 @@ import sys
 from typing import Dict, List, TypedDict, Union
 
 
+class InvalidServiceConfig(Exception):
+    pass
+
+
 class UpstreamDefinition(TypedDict, total=False):
     """An upstream definition in a sidecar service registration."""
 
@@ -200,7 +204,7 @@ class ServiceConfigParameters:
         proxy_config = ProxyConfig()
 
         if "annotations" not in self.json_config:
-            sys.exit("Service configuration is missing annotations.")
+            raise InvalidServiceConfig("Service configuration is missing annotations.")
 
         traffic_exclusion_options = frozenset(
             (
@@ -321,8 +325,8 @@ class ServiceConfigParameters:
         try:
             with open(file=json_file) as file_handle:
                 service_configuration = json.load(fp=file_handle)
-        except:
-            sys.exit("Unable to parse JSON registration.")
+        except Exception as unable_read_json:
+            raise InvalidServiceConfig("Unable to parse JSON registration.") from unable_read_json
 
         return service_configuration
 
