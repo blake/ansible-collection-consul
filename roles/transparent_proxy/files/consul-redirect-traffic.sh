@@ -25,8 +25,11 @@ SERVICE_NAME=$1
 # Obtain the user ID for envoy
 PROXY_UID=$(id --user envoy)
 
-if [[ -f "/etc/consul.d/service-registration.json" ]]; then
-  CONFIGURED_PROXY_MODE=$(jq --raw-output .service.connect.sidecar_service.proxy.mode /etc/consul.d/service-registration.json)
+SERVICE_CONFIG_DIR="/srv/consul/config/services/${SERVICE_NAME}"
+
+SERVICE_REGISTRATION_FILE="${SERVICE_CONFIG_DIR}/registration.json"
+if [[ -f $SERVICE_REGISTRATION_FILE ]]; then
+  CONFIGURED_PROXY_MODE=$(jq --raw-output .service.connect.sidecar_service.proxy.mode "${SERVICE_REGISTRATION_FILE}")
 
   DIRECT_PROXY_MODE="direct"
 
@@ -37,8 +40,9 @@ if [[ -f "/etc/consul.d/service-registration.json" ]]; then
 fi
 
 # Include extra redirection exemptions if present
-if [[ -f "/srv/consul/services/${SERVICE_NAME}/extra-args.json" ]]; then
-  EXTRA_REDIRECT_ARGS=$(jq --raw-output .redirect "/srv/consul/services/${SERVICE_NAME}/extra-args.json")
+SERVICE_EXTRA_ARGS_FILE="${SERVICE_CONFIG_DIR}/extra-args.json"
+if [[ -f "${SERVICE_EXTRA_ARGS_FILE}" ]]; then
+  EXTRA_REDIRECT_ARGS=$(jq --raw-output .redirect "${SERVICE_EXTRA_ARGS_FILE}")
 fi
 
 eval consul connect redirect-traffic \

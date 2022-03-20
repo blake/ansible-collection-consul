@@ -20,21 +20,6 @@ if [[ $# -eq 0 ]]; then
     usage
 fi
 
-# if [[ -f "/srv/consul/services/${1}/config.json" ]]; then
-#   CONFIGURED_PROXY_MODE=$(jq --raw-output .service.connect.sidecar_service.proxy.mode /etc/consul.d/service-registration.json)
-
-#   DIRECT_PROXY_MODE="direct"
-
-#   # Do not install the redirect rules if the proxy is operating in `direct` mode.
-#   if [[ "$CONFIGURED_PROXY_MODE" = "${DIRECT_PROXY_MODE}" ]]; then
-#     exit
-#   fi
-# fi
-
-export CNI_PATH=/opt/cni/bin
-CONSUL_HTTP_ADDR="http://localhost:8500"
-CNI_NETWORK="envoynetwork"
-
 case $1 in
   add | del | check)
     operation="$1"
@@ -46,11 +31,41 @@ case $1 in
     ;;
 esac
 
-PROXY_PORT=$(curl --silent "${CONSUL_HTTP_ADDR}/v1/agent/service/${2}-sidecar-proxy" | jq .Port)
+CONSUL_HTTP_ADDR="http://localhost:8500"
+SERVICE_NAME="$2"
+
+SERVICE_CONFIG_PATH="/srv/consul/config/services/${SERVICE_NAME}"
+EXTRA_ARGS_PATH="${SERVICE_CONFIG_PATH}/extra_args.json"
+
+if [[ -f "${EXTRA_ARGS_PATH}" ]]; then
+  CNI_NETWORK=$(jq --raw-output .network "$EXTRA_ARGS_PATH")
+else
+  # Use default network of `envoynetwork`
+  CNI_NETWORK="envoynetwork"
+fi
+
+# Determine the port assigned by Consul port for this proxy
+PROXY_PORT=$(curl --silent "${CONSUL_HTTP_ADDR}/v1/agent/service/${SERVICE_NAME}-sidecar-proxy" | jq .Port)
+
+# Generate the CAP_ARGS for the portmap CNI plugin so that it forwards the
+# correct host port to this proxy
 port_mapping_args=$(jq --compact-output --null-input --arg port "$PROXY_PORT" '{portMappings: [{hostPort: $port|tonumber, containerPort: $port|tonumber, protocol: "tcp"}]}')
 
+if [[ "$operation" = "del" ]]; then
+  if ! systemctl is-active "systemd-netns@${SERVICE_NAME}.service"; then
+    # The namespace does not exist, which will cause the `del` operation to fail
+    # and prevent cleanup of any remaining CNI objects.
+    #
+    # Start the namespace in the background to allow cleanup to continue.
+    # The namespace should be cleaned up by the remaining scripts that manage
+    # the namespace.
+    systemctl start "systemd-netns@${SERVICE_NAME}.service"
+  fi
+fi
+
+export CNI_PATH=/opt/cni/bin
 CAP_ARGS=$port_mapping_args \
   cnitool \
   "$operation" \
   $CNI_NETWORK \
-  "/var/run/netns/${2}"
+  "/var/run/netns/${SERVICE_NAME}"
