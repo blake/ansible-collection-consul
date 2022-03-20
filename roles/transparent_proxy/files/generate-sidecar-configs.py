@@ -14,6 +14,7 @@ from typing import Dict, List, TypedDict, Union
 
 class UpstreamDefinition(TypedDict, total=False):
     """An upstream definition in a sidecar service registration."""
+
     datacenter: str
     destination_name: str
     destination_namespace: str
@@ -23,6 +24,7 @@ class UpstreamDefinition(TypedDict, total=False):
 
 class ProxyConfig(TypedDict, total=False):
     """The configuration for this proxy, including implementation-specific overrides."""
+
     mode: str
     upstreams: List[UpstreamDefinition]
     config: Dict[str, str]
@@ -30,6 +32,7 @@ class ProxyConfig(TypedDict, total=False):
 
 class TaggedAddress(TypedDict):
     """A tagged address for a service."""
+
     address: str
     port: int
 
@@ -39,22 +42,26 @@ class TaggedAddresses(TypedDict):
     A set of tagged addresses for a service. Currently only the `virtual`
     address type is supported.
     """
+
     virtual: TaggedAddress
 
 
 class SidecarServiceDefinition(TypedDict, total=False):
     """A sidecar service definition."""
+
     proxy: ProxyConfig
     tagged_addresses: TaggedAddresses
 
 
 class ConnectDefinition(TypedDict):
     """The `connect` stanza of a sidecar service definition."""
+
     sidecar_service: SidecarServiceDefinition
 
 
 class ServiceDefinition(TypedDict, total=False):
     """A Consul service definition."""
+
     name: str
     connect: ConnectDefinition
     meta: Dict[str, str]
@@ -73,7 +80,7 @@ class ServiceConfigParameters:
         self.connect_redirect_traffic_args.append(f"-{option}={value}")
 
     def add_connect_envoy_arg(self, option: str, value: str):
-        """ Add an argument to the list of args passed to 'consul connect envoy'"""
+        """Add an argument to the list of args passed to 'consul connect envoy'"""
         self.connect_envoy_args.append(f"-{option}={value}")
 
     @staticmethod
@@ -160,7 +167,9 @@ class ServiceConfigParameters:
         Parse the proxy provided on the CLI.
         """
 
-        proxy_params = self.service_config["service"]["connect"]["sidecar_service"]["proxy"]
+        proxy_params = self.service_config["service"]["connect"]["sidecar_service"][
+            "proxy"
+        ]
 
         proxy_config_params = {}
 
@@ -358,7 +367,8 @@ def main():
         help="Print to generated information to stdout",
     )
     parser.add_argument(
-        "--proxy-config", help="Optional configuration for the proxy. Format is 'key1=value1,key2=value2'"
+        "--proxy-config",
+        help="Optional configuration for the proxy. Format is 'key1=value1,key2=value2'",
     )
     parser.add_argument(
         "--type", choices=supported_outputs, help="The type of information to output"
