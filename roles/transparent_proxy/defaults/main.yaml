@@ -1,0 +1,6 @@
+---
+# Create a dummy interface for systemd-resolved to bind to in order to provide
+# DNS resolution for the namespaced services.
+dummy_interface_enable: true
+dummy_interface_ip: 192.0.2.1/32
+dummy_interface_name: dummy0

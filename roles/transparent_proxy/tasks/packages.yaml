@@ -82,22 +82,35 @@
 
 - name: Install consul-sidecar-init systemd unit file
   ansible.builtin.copy:
-    src: systemd-consul-sidecar-init.conf
-    dest: /etc/systemd/system/consul-sidecar-init.service
+    src: "{{ item.src }}"
+    dest: "/etc/systemd/system/{{ item.dest }}"
     # 0644
     mode: u=rw,go=r
+  loop:
+    - src: systemd-consul-sidecar-init.conf
+      dest: consul-sidecar-init.service
+    - src: systemd-netns@.service
+      dest: systemd-netns@.service
+    - src: systemd-netns-access@.service
+      dest: systemd-netns-access@.service
   notify: reload systemd
 
-- name: Create /srv/consul
+- name: Create required directories
   file:
     state: directory
-    path: /srv/consul
+    path: "{{ item }}"
+    # 0750
+    mode: u=rwx,go=rx,o=
+  loop:
+    - /etc/netns
+    - /srv/consul/conf/dns
+    - /srv/consul/conf/services
 
 - name: Copy Consul configurations
   ansible.builtin.copy:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
-    mode: "{{ item.mode }}"
+    mode: "{{ item.mode | default(\"u=rwx,g=rw,o=\") }}"
     owner: "{{ item.owner | default(omit) }}"
     group: "{{ item.group | default(omit) }}"
   loop:
@@ -109,21 +122,17 @@
       group: consul
     - src: consul-redirect-traffic.sh
       dest: /usr/local/bin/consul-redirect-traffic
-      # 0750
-      mode: u=rwx,g=rw,o=
     - src: generate-sidecar-configs.py
       dest: /srv/consul/generate-sidecar-configs.py
-      # 0750
-      mode: u=rwx,g=rw,o=
     - src: consul-cleanup-iptables.sh
       dest: /usr/local/bin/consul-cleanup-iptables
-      # 0750
-      mode: u=rwx,g=rw,o=
+    - src: cnitool-helper.sh
+      dest: /usr/local/sbin/cnitool-helper
 
 - name: Flush handlers
   ansible.builtin.meta: flush_handlers
 
 - name: Enable consul-sidecar-init.service
-  systemd:
+  ansible.builtin.systemd:
     name: consul-sidecar-init
     enabled: yes

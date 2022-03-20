@@ -1,0 +1,18 @@
+[Unit]
+Description=Named network namespace %I
+After=syslog.target network.target systemd-netns@%i.service
+Before=%i.service
+BindsTo=systemd-netns@%i.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+
+ExecStart=/usr/bin/env cnitool-helper add %i
+# ExecStart=/usr/bin/env cnitool-helper check envoynetwork /var/run/netns/%i
+
+ExecStop=-/usr/bin/env cnitool-helper del %i
+
+[Install]
+WantedBy=multi-user.target
+WantedBy=network-online.target

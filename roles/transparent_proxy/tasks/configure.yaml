@@ -26,3 +26,38 @@
     name: envoy
     create_home: no
     system: yes
+
+- name: Create dummy interface if enabled
+  block:
+    - name: "Create /etc/systemd/network/10-{{ dummy_interface_name }}.netdev"
+      ansible.builtin.template:
+        src: dummy-netdev.j2
+        dest: "/etc/systemd/network/10-{{ dummy_interface_name }}.netdev"
+        # 0644
+        mode: u=rw,go=r
+        owner: root
+        group: root
+      notify: restart systemd-networkd
+
+    - name: "Create /etc/systemd/network/20-{{ dummy_interface_name }}.network"
+      ansible.builtin.template:
+        src: dummy-network.j2
+        dest: "/etc/systemd/network/20-{{ dummy_interface_name }}.network"
+        # 0644
+        mode: u=rw,go=r
+        owner: root
+        group: root
+      notify: restart systemd-networkd
+
+    - name: Add DNSStubListenerExtra to systemd-resolved config
+      community.general.ini_file:
+        path: /etc/systemd/resolved.conf.d/consul.conf
+        state: present
+        mode: 0644
+        section: Resolve
+        option: DNSStubListenerExtra
+        value: "{{ dummy_interface_ip | ansible.netcommon.ipaddr('address') }}"
+        no_extra_spaces: yes
+      notify: restart systemd-resolved
+
+  when: dummy_interface_enable == true
