@@ -4,3 +4,7 @@
 dummy_interface_enable: true
 dummy_interface_ip: 192.0.2.1/32
 dummy_interface_name: dummy0
+
+# Additional IP addresses for systemd-resolved to bind to
+dns_stub_listener_ips:
+  - "{{ dummy_interface_ip | ansible.netcommon.ipaddr('address') }}"

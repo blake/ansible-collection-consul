@@ -49,14 +49,14 @@
         group: root
       notify: restart systemd-networkd
 
-    - name: Add DNSStubListenerExtra to systemd-resolved config
+    - name: Add DNSStubListenerExtra IP(s) to systemd-resolved config
       community.general.ini_file:
         path: /etc/systemd/resolved.conf.d/consul.conf
         state: present
         mode: 0644
         section: Resolve
         option: DNSStubListenerExtra
-        value: "{{ dummy_interface_ip | ansible.netcommon.ipaddr('address') }}"
+        values: "{{ dns_stub_listener_ips }}"
         no_extra_spaces: yes
       notify: restart systemd-resolved
 
