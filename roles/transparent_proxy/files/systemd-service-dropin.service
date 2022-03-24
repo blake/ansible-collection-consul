@@ -1,0 +1,46 @@
+[Unit]
+# BindsTo= Configures requirement dependencies, very similar in style to
+# Requires=, however in addition to this behavior, it also declares that this
+# unit is stopped when any of the units listed suddenly disappears. Units can
+# suddenly, unexpectedly disappear if a service terminates on its own choice, a
+# device is unplugged or a mount point unmounted without involvement of systemd.
+BindsTo=systemd-netns@{{ item }}.service
+
+# JoinsNamespaceOf= For units that start processes (such as service units),
+# lists one or more other units whose network and/or temporary file namespace to
+# join. This only applies to unit types which support the PrivateNetwork= and
+# PrivateTmp= directives (see systemd.exec(5) for details). If a unit that has
+# this setting set is started, its processes will see the same /tmp, /tmp/var
+# and network namespace as one listed unit that is started. If multiple listed
+# units are already started, it is not defined which namespace is joined. Note
+# that this setting only has an effect if PrivateNetwork= and/or PrivateTmp= is
+# enabled for both the unit that joins the namespace and the unit whose
+# namespace is joined.
+JoinsNamespaceOf=systemd-netns@{{ item }}.service
+After=systemd-netns@{{ item }}.service
+Wants=envoy@{{ item }}.service
+
+[Service]
+
+# Create a non-recursive bind mount in the service's mount namespace to place
+# /etc/netns/<service>/resolv.conf as /etc/resolv.conf.
+# This is required so that the spawned process uses the correct name servers
+# when making DNS requests.
+BindReadOnlyPaths=/etc/netns/{{ item }}/resolv.conf:/etc/resolv.conf:norbind
+
+CPUAccounting = true
+BlockIOAccounting = true
+MemoryAccounting = true
+TasksAccounting = true
+PrivateNetwork = true
+PrivateTmp = true
+NoNewPrivileges = true
+
+ProtectHostname = true
+ProtectClock = true
+ProtectKernelTunables = true
+ProtectKernelModules = true
+ProtectKernelLogs = true
+ProtectControlGroups = true
+
+Slice = {{ item }}.slice
