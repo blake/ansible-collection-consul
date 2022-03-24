@@ -126,11 +126,11 @@
       owner: consul
       group: consul
     - src: consul-redirect-traffic.sh
-      dest: /usr/local/bin/consul-redirect-traffic
+      dest: /usr/local/sbin/consul-redirect-traffic
     - src: generate_sidecar_configs.py
       dest: /srv/consul/generate_sidecar_configs.py
     - src: consul-cleanup-iptables.sh
-      dest: /usr/local/bin/consul-cleanup-iptables
+      dest: /usr/local/sbin/consul-cleanup-iptables
     - src: cnitool-helper.sh
       dest: /usr/local/sbin/cnitool-helper
 
