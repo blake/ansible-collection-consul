@@ -8,15 +8,13 @@
 # Exit upon receiving any errors
 set -o errexit
 
-set -x
-
 usage(){
   echo "Usage: $(basename "$0") <add|del> <service_name>"
   exit 1
 }
 
 # Ensure a service name was provided
-if [[ $# -eq 0 ]]; then
+if [[ $# -ne 2 ]]; then
     usage
 fi
 
@@ -53,7 +51,7 @@ else
 fi
 
 # Determine the port assigned by Consul port for this proxy
-PROXY_PORT=$(curl --silent "${CONSUL_HTTP_ADDR}/v1/agent/service/${SERVICE_NAME}-sidecar-proxy" | jq .Port)
+PROXY_PORT=$(curl --no-progress-meter --stderr - "${CONSUL_HTTP_ADDR}/v1/agent/service/${SERVICE_NAME}-sidecar-proxy" | jq --raw-input 'try (fromjson | .Port) catch error("Unable to retrieve proxy port from Consul")')
 
 # Generate the CAP_ARGS for the portmap CNI plugin so that it forwards the
 # correct host port to this proxy
