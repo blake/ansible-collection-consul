@@ -94,7 +94,7 @@
   notify: reload systemd
 
 - name: Create required directories
-  file:
+  ansible.builtin.file:
     state: directory
     path: "{{ item }}"
     # 0750
@@ -103,6 +103,13 @@
     - /etc/netns
     - /srv/consul/conf/dns
     - /srv/consul/conf/services
+
+- name: Copy default mesh configuration
+  ansible.builtin.copy:
+    content: |
+      {{ consul_mesh_config | to_nice_json }}
+    dest: /srv/consul/conf/mesh.json
+    mode: "u=rw,g=r,o="
 
 - name: Copy Consul configurations
   ansible.builtin.copy:
@@ -120,8 +127,8 @@
       group: consul
     - src: consul-redirect-traffic.sh
       dest: /usr/local/bin/consul-redirect-traffic
-    - src: generate-sidecar-configs.py
-      dest: /srv/consul/generate-sidecar-configs.py
+    - src: generate_sidecar_configs.py
+      dest: /srv/consul/generate_sidecar_configs.py
     - src: consul-cleanup-iptables.sh
       dest: /usr/local/bin/consul-cleanup-iptables
     - src: cnitool-helper.sh
@@ -134,3 +141,10 @@
   ansible.builtin.systemd:
     name: consul-sidecar-init
     enabled: yes
+
+- name: Copy sudoers file for Nomad to execute consul-redirect-traffic
+  ansible.builtin.copy:
+    src: nomad/sudoers-consul-redirect-traffic
+    dest: /etc/sudoers.d/099-consul-redirect-traffic
+    mode: "u=rw,g=r,o=r"
+    validate: "visudo -cf %s"

@@ -48,16 +48,16 @@
         owner: root
         group: root
       notify: restart systemd-networkd
-
-    - name: Add DNSStubListenerExtra IP(s) to systemd-resolved config
-      community.general.ini_file:
-        path: /etc/systemd/resolved.conf.d/consul.conf
-        state: present
-        mode: 0644
-        section: Resolve
-        option: DNSStubListenerExtra
-        values: "{{ dns_stub_listener_ips }}"
-        no_extra_spaces: yes
-      notify: restart systemd-resolved
-
   when: dummy_interface_enable == true
+
+- name: Add DNSStubListenerExtra IP(s) to systemd-resolved config
+  community.general.ini_file:
+    path: /etc/systemd/resolved.conf.d/consul.conf
+    state: present
+    mode: 0644
+    section: Resolve
+    option: DNSStubListenerExtra
+    value: "{{ dns_stub_listener_ip }}"
+    no_extra_spaces: yes
+  when: dns_stub_listener_ip != False
+  notify: restart systemd-resolved

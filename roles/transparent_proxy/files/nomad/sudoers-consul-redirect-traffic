@@ -1,0 +1,4 @@
+# Nomad runs exec tasks as the `nobody` user, which is not allowed to execute
+# iptables. This allows the nobody user to run the consul-redirect-traffic
+# command as root
+nobody ALL=(root) NOPASSWD: /usr/local/sbin/consul-redirect-traffic

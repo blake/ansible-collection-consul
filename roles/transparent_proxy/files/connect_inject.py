@@ -296,7 +296,7 @@ def link_dns_dir(name: str, network: str, dns_dir: str):
     elif netns_path.exists() and not netns_path.is_dir():
         raise Exception(f"{netns_path} is not a directory")
 
-    # The DNS path for the provided network is '/srv/consul/config/dns/<network>'
+    # The DNS path for the provided network is '/srv/consul/conf/dns/<network>'
     netns_dns_path = Path(dns_dir).joinpath(network)
 
     if not netns_dns_path.exists():
@@ -388,7 +388,7 @@ def main():
     # Link the service's namespace to the correct DNS configuration for the
     # configured network
     try:
-        link_dns_dir(name=service_config.service_name(), network=args.network, dns_dir="/srv/consul/config/dns")
+        link_dns_dir(name=service_config.service_name(), network=args.network, dns_dir="/srv/consul/conf/dns")
     except Exception as e:
         raise e
 

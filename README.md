@@ -73,9 +73,9 @@ proxy mode (`direct` or `transparent` (default)), or other supported parameters.
 The `consul-sidecar-init` systemd oneshot service is configured to run after
 cloud-init successfully exits. If the `consul-sidecar-init` service detects that
 `/srv/consul/service-config.json` is present, that systemd service will execute
-`/srv/consul/generate-sidecar-configs.py`.
+`/srv/consul/generate_sidecar_configs.py`.
 
-`generate-sidecar-configs` will generate a Consul service registration based on
+`generate_sidecar_configs` will generate a Consul service registration based on
 the parameters defined in the service config, and place the resultant file into
 `/etc/consul.d/service-registration.json`. Lastly, it will enable and start the
 Envoy proxy for the service using the `envoy@.service` unit template file.

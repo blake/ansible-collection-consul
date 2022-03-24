@@ -34,14 +34,22 @@ esac
 CONSUL_HTTP_ADDR="http://localhost:8500"
 SERVICE_NAME="$2"
 
-SERVICE_CONFIG_PATH="/srv/consul/config/services/${SERVICE_NAME}"
-EXTRA_ARGS_PATH="${SERVICE_CONFIG_PATH}/extra_args.json"
+DEFAULT_CONFIG_PATH="/srv/consul/conf/mesh.json"
+SERVICE_CONFIG_PATH="/srv/consul/conf/services/${SERVICE_NAME}"
+EXTRA_ARGS_PATH="${SERVICE_CONFIG_PATH}/extra-args.json"
 
-if [[ -f "${EXTRA_ARGS_PATH}" ]]; then
-  CNI_NETWORK=$(jq --raw-output .network "$EXTRA_ARGS_PATH")
+# Require default config to be present
+if [[ ! -f "${DEFAULT_CONFIG_PATH}" ]]; then
+  echo "ERROR: ${DEFAULT_CONFIG_PATH} does not exist"
+  exit 1
+fi
+
+if [[ (-f "${EXTRA_ARGS_PATH}") ]]; then
+  # Attempt to use the network specified in the extra args file
+  CNI_NETWORK=$(jq --slurpfile default "${DEFAULT_CONFIG_PATH}" --raw-output '.network // $default.network' "$EXTRA_ARGS_PATH")
 else
-  # Use default network of `envoynetwork`
-  CNI_NETWORK="envoynetwork"
+  # If no extra args file is present, use the network from the default config
+  CNI_NETWORK=$(jq --raw-output .network "$DEFAULT_CONFIG_PATH")
 fi
 
 # Determine the port assigned by Consul port for this proxy
