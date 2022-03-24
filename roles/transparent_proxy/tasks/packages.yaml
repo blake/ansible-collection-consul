@@ -103,6 +103,7 @@
     - /etc/netns
     - /srv/consul/conf/dns
     - /srv/consul/conf/services
+    - /srv/consul/run
 
 - name: Copy default mesh configuration
   ansible.builtin.copy:
