@@ -16,6 +16,7 @@
   loop:
     - { option: DNS, value: "127.0.0.1{{ dns_port }}" }
     - { option: Domains, value: "~consul" }
+    - { option: DNSEC, value: "no" }
   vars:
     # Systemd version 246 and greater allow specifying a non-standard port on
     # the DNS server address.
