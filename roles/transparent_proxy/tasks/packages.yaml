@@ -28,8 +28,12 @@
         repo: "{{ item }}"
         state: present
       loop:
-        - "deb [arch=amd64 signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com {{ ansible_lsb.codename }} main"
+        - "deb [arch=amd64 signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com {{ hashicorp_ubuntu_release }} main"
         - "deb [arch=amd64 signed-by=/usr/share/keyrings/getenvoy-archive-keyring.gpg] https://deb.dl.getenvoy.io/public/deb/ubuntu {{ ansible_lsb.codename }} main"
+      vars:
+        # At the time of writing, HashiCorp does not provide packages for Ubuntu
+        # 22.04 'Jammy'. Use the 'focal' release if deploying onto that OS.
+        hashicorp_ubuntu_release: "{{ (ansible_lsb.codename == 'jammy') | ternary('focal', ansible_lsb.codename) }}"
   when: ansible_distribution == 'Ubuntu'
 
 - name: Configure package repos on Red Hat
