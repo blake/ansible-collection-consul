@@ -114,7 +114,7 @@
     content: |
       {{ consul_mesh_config | to_nice_json }}
     dest: /srv/consul/conf/mesh.json
-    mode: "u=rw,g=r,o="
+    mode: "u=rw,g=r,o=r"
 
 - name: Copy Consul configurations
   ansible.builtin.copy:
