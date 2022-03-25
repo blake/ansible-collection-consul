@@ -44,7 +44,7 @@ fi
 
 if [[ (-f "${EXTRA_ARGS_PATH}") ]]; then
   # Attempt to use the network specified in the extra args file
-  CNI_NETWORK=$(jq --slurpfile default "${DEFAULT_CONFIG_PATH}" --raw-output '.network // $default.network' "$EXTRA_ARGS_PATH")
+  CNI_NETWORK=$(jq --slurpfile default "${DEFAULT_CONFIG_PATH}" --raw-output '.network // $default[0].network' "$EXTRA_ARGS_PATH")
 else
   # If no extra args file is present, use the network from the default config
   CNI_NETWORK=$(jq --raw-output .network "$DEFAULT_CONFIG_PATH")
@@ -53,9 +53,11 @@ fi
 # Determine the port assigned by Consul port for this proxy
 PROXY_PORT=$(curl --no-progress-meter --stderr - "${CONSUL_HTTP_ADDR}/v1/agent/service/${SERVICE_NAME}-sidecar-proxy" | jq --raw-input 'try (fromjson | .Port) catch error("Unable to retrieve proxy port from Consul")')
 
+EXCLUDE_PORT=$(jq --raw-output '.annotations | to_entries | .[] | select(.key | contains("exclude-inbound")).value' "${SERVICE_CONFIG_PATH}/config.json")
+
 # Generate the CAP_ARGS for the portmap CNI plugin so that it forwards the
 # correct host port to this proxy
-port_mapping_args=$(jq --compact-output --null-input --arg port "$PROXY_PORT" '{portMappings: [{hostPort: $port|tonumber, containerPort: $port|tonumber, protocol: "tcp"}]}')
+port_mapping_args=$(jq --compact-output --null-input --arg excludeport "$EXCLUDE_PORT" --arg port "$PROXY_PORT" '{portMappings: [{hostPort: $port|tonumber, containerPort: $port|tonumber, protocol: "tcp"}]} | if ($excludeport | length) >= 1 then .portMappings += [{"hostPort":$excludeport|tonumber,"containerPort":$excludeport|tonumber,"protocol":"tcp"}] else . end')
 
 if [[ "$operation" = "del" ]]; then
   if ! systemctl is-active "systemd-netns@${SERVICE_NAME}.service"; then
